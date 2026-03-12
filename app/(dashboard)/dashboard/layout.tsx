@@ -6,6 +6,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 
 import { UserAccountNav } from "@/components/user-account-nav"
 import { SiteFooter } from "@/components/site-footer"
+export const dynamic = "force-dynamic"
 
 export default async function DashboardLayout({
   children,
