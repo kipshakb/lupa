@@ -1,47 +1,66 @@
-import { notFound } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
+import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 
-import { dashboardConfig } from "@/config/dashboard"
-import { getCurrentUser } from "@/lib/session"
-import { MainNav } from "@/components/main-nav"
-import { DashboardNav } from "@/components/nav"
-import { SiteFooter } from "@/components/site-footer"
 import { UserAccountNav } from "@/components/user-account-nav"
-
-interface DashboardLayoutProps {
-  children?: React.ReactNode
-}
+import { SiteFooter } from "@/components/site-footer"
 
 export default async function DashboardLayout({
   children,
-}: DashboardLayoutProps) {
-  const user = await getCurrentUser()
+}: {
+  children: React.ReactNode
+}) {
+  const supabase = createServerComponentClient({ cookies })
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) {
-    return notFound()
-  }
+  if (!session) redirect("/login")
+
+  const user = session.user
 
   return (
-    <div className="flex min-h-screen flex-col space-y-6">
+    <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b bg-background">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <MainNav items={dashboardConfig.mainNav} />
-          <UserAccountNav
-            user={{
-              name: user.name,
-              image: user.image,
-              email: user.email,
-            }}
-          />
+        <div className="container flex h-20 items-center justify-between">
+          <div className="flex items-center gap-10">
+            {/* Логотип LUPA */}
+            <Link href="/" className="flex items-center gap-3">
+              <div className="relative w-10 h-10">
+                <Image
+                  src="/images/logo.svg"
+                  alt="Lupa"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="font-bold text-xl tracking-tight uppercase">LUPA</span>
+                
+              </div>
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex flex-col text-right leading-none mr-2">
+              <span className="font-bold text-sm">
+                {user.user_metadata?.full_name || user.email?.split('@')[0]}
+              </span>
+            </div>
+            <UserAccountNav
+              user={{
+                name: user.user_metadata?.full_name || null,
+                image: user.user_metadata?.avatar_url || null,
+                email: user.email ?? undefined,
+              }}
+            />
+          </div>
         </div>
       </header>
-      <div className="container grid flex-1 gap-12 md:grid-cols-[200px_1fr]">
-        <aside className="hidden w-[200px] flex-col md:flex">
-          <DashboardNav items={dashboardConfig.sidebarNav} />
-        </aside>
-        <main className="flex w-full flex-1 flex-col overflow-hidden">
-          {children}
-        </main>
-      </div>
+
+      <main className="flex-1 container py-10 max-w-5xl">
+        {children}
+      </main>
       <SiteFooter className="border-t" />
     </div>
   )

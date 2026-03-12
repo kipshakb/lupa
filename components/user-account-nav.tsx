@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { User } from "next-auth"
-import { signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 import {
   DropdownMenu,
@@ -14,15 +14,34 @@ import {
 import { UserAvatar } from "@/components/user-avatar"
 
 interface UserAccountNavProps extends React.HTMLAttributes<HTMLDivElement> {
-  user: Pick<User, "name" | "image" | "email">
+  user: {
+    email: string | undefined
+    name?: string | null
+    image?: string | null
+  }
 }
 
 export function UserAccountNav({ user }: UserAccountNavProps) {
+  const supabase = createClientComponentClient()
+  const router = useRouter()
+
+  const handleSignOut = async (event: Event) => {
+    event.preventDefault()
+    await supabase.auth.signOut()
+    
+    // Освежаем страницу и перекидываем на главную
+    router.refresh()
+    router.push("/")
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
         <UserAvatar
-          user={{ name: user.name || null, image: user.image || null }}
+          user={{ 
+            name: user.name || user.email || null, 
+            image: user.image || null 
+          }}
           className="h-8 w-8"
         />
       </DropdownMenuTrigger>
@@ -38,26 +57,20 @@ export function UserAccountNav({ user }: UserAccountNavProps) {
           </div>
         </div>
         <DropdownMenuSeparator />
+        
+        {/* Оставили только Личный кабинет */}
         <DropdownMenuItem asChild>
-          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/dashboard">Личный кабинет</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard/billing">Billing</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard/settings">Settings</Link>
-        </DropdownMenuItem>
+        
         <DropdownMenuSeparator />
+        
+        {/* Переименовали в Выйти */}
         <DropdownMenuItem
-          className="cursor-pointer"
-          onSelect={(event) => {
-            event.preventDefault()
-            signOut({
-              callbackUrl: `${window.location.origin}/login`,
-            })
-          }}
+          className="cursor-pointer text-red-600 focus:text-red-600"
+          onSelect={(event) => handleSignOut(event)}
         >
-          Sign out
+          Выйти
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

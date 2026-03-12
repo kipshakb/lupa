@@ -20,15 +20,9 @@ export function MainNav({ items, children }: MainNavProps) {
   const [showMobileMenu, setShowMobileMenu] = React.useState<boolean>(false)
 
   return (
-    <div className="flex gap-6 md:gap-10">
-      <Link href="/" className="hidden items-center space-x-2 md:flex">
-        <Icons.logo />
-        <span className="hidden font-bold sm:inline-block">
-          {siteConfig.name}
-        </span>
-      </Link>
+    <div className="flex w-full items-center">
       {items?.length ? (
-        <nav className="hidden gap-6 md:flex">
+        <nav className="hidden w-full items-center justify-between md:flex">
           {items?.map((item, index) => (
             <Link
               key={index}

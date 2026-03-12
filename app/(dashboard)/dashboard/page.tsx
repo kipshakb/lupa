@@ -1,62 +1,111 @@
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import Link from "next/link" // Добавили импорт
 
-import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { getCurrentUser } from "@/lib/session"
 import { EmptyPlaceholder } from "@/components/empty-placeholder"
 import { DashboardHeader } from "@/components/header"
-import { PostCreateButton } from "@/components/post-create-button"
-import { PostItem } from "@/components/post-item"
 import { DashboardShell } from "@/components/shell"
+import { PostItem } from "@/components/post-item"
+import { buttonVariants } from "@/components/ui/button" // Добавили для стилизации кнопки
+import { cn } from "@/lib/utils"
 
 export const metadata = {
-  title: "Dashboard",
+  title: "Личный кабинет",
 }
 
 export default async function DashboardPage() {
-  const user = await getCurrentUser()
+  const supabase = createServerComponentClient({ cookies })
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) {
-    redirect(authOptions?.pages?.signIn || "/login")
+  if (!session) {
+    redirect("/login")
   }
 
-  const posts = await db.post.findMany({
+  const user = session.user
+
+  const events = await db.event.findMany({
     where: {
       authorId: user.id,
     },
     select: {
       id: true,
       title: true,
-      published: true,
+      date: true,
       createdAt: true,
     },
     orderBy: {
-      updatedAt: "desc",
+      date: "desc",
     },
   })
 
   return (
     <DashboardShell>
-      <DashboardHeader heading="Posts" text="Create and manage posts.">
-        <PostCreateButton />
+      {/* РАЗДЕЛ 1: МОИ МЕРОПРИЯТИЯ */}
+      <DashboardHeader heading="Мои мероприятия" text="Управляйте созданными событиями.">
+        {/* ЗАМЕНИЛИ PostCreateButton на Link */}
+        <Link 
+          href="/events/new" 
+          className={cn(buttonVariants({ variant: "default" }))}
+        >
+          + Создать событие
+        </Link>
       </DashboardHeader>
-      <div>
-        {posts?.length ? (
+      
+      <div className="mb-12">
+        {events?.length ? (
           <div className="divide-y divide-border rounded-md border">
-            {posts.map((post) => (
-              <PostItem key={post.id} post={post} />
+            {events.map((event) => (
+              <PostItem 
+                key={event.id} 
+                post={{
+                  id: event.id,
+                  title: event.title,
+                  createdAt: event.createdAt,
+                  published: true 
+                }} 
+              />
             ))}
           </div>
         ) : (
           <EmptyPlaceholder>
             <EmptyPlaceholder.Icon name="post" />
-            <EmptyPlaceholder.Title>No posts created</EmptyPlaceholder.Title>
+            <EmptyPlaceholder.Title>Мероприятий пока нет</EmptyPlaceholder.Title>
             <EmptyPlaceholder.Description>
-              You don&apos;t have any posts yet. Start creating content.
+              Вы еще не создали ни одного события. Пора это исправить!
             </EmptyPlaceholder.Description>
-            <PostCreateButton variant="outline" />
+            {/* ТУТ ТОЖЕ ЗАМЕНИЛИ */}
+            <Link 
+              href="/events/new" 
+              className={cn(buttonVariants({ variant: "outline" }))}
+            >
+              Создать событие
+            </Link>
           </EmptyPlaceholder>
         )}
+      </div>
+
+      {/* РАЗДЕЛ 2: БИЛЕТЫ */}
+      <div className="pt-10 border-t">
+        <DashboardHeader 
+          heading="Билеты" 
+          text="Ваши купленные билеты на мероприятия." 
+        />
+        
+        <div className="mt-4">
+          <EmptyPlaceholder>
+            <EmptyPlaceholder.Icon name="billing" />
+            <EmptyPlaceholder.Title>Билетов пока нет</EmptyPlaceholder.Title>
+            <EmptyPlaceholder.Description>
+              Вы еще не купили ни одного билета. Найдите интересное событие на главной.
+            </EmptyPlaceholder.Description>
+            {/* Кнопка перехода на главную */}
+            <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
+              На главную
+            </Link>
+          </EmptyPlaceholder>
+        </div>
       </div>
     </DashboardShell>
   )

@@ -1,46 +1,34 @@
-import { getToken } from "next-auth/jwt"
-import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export default withAuth(
-  async function middleware(req) {
-    const token = await getToken({ req })
-    const isAuth = !!token
-    const isAuthPage =
-      req.nextUrl.pathname.startsWith("/login") ||
-      req.nextUrl.pathname.startsWith("/register")
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next()
+  const supabase = createMiddlewareClient({ req, res })
 
-    if (isAuthPage) {
-      if (isAuth) {
-        return NextResponse.redirect(new URL("/dashboard", req.url))
-      }
+  // 1. Лог пути (ты его уже видел, значит файл работает)
+  console.log("--- Middleware работает на:", req.nextUrl.pathname)
 
-      return null
-    }
+  // 2. Получаем сессию
+  const { data: { session } } = await supabase.auth.getSession()
 
-    if (!isAuth) {
-      let from = req.nextUrl.pathname;
-      if (req.nextUrl.search) {
-        from += req.nextUrl.search;
-      }
+  // 3. ЛОГ СЕССИИ (тот самый, что ты просил)
+  // Покажет true, если ты вошел, и false, если ты аноним
+  console.log("--- СЕССИЯ НАЙДЕНА?", !!session)
 
-      return NextResponse.redirect(
-        new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
-      );
-    }
-  },
-  {
-    callbacks: {
-      async authorized() {
-        // This is a work-around for handling redirect on auth pages.
-        // We return true here so that the middleware function above
-        // is always called.
-        return true
-      },
-    },
+  // 4. Логика защиты
+  if (!session && req.nextUrl.pathname.startsWith('/events/new')) {
+    console.log("--- ДОСТУП ЗАПРЕЩЕН: Редирект на /login")
+    
+    // Делаем редирект на страницу логина
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = '/login'
+    return NextResponse.redirect(redirectUrl)
   }
-)
+
+  return res
+}
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/editor/:path*", "/login", "/register"],
+  // Проверяем эти пути
+  matcher: ['/events/new', '/dashboard/:path*'],
 }

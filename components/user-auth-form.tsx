@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { signIn } from "next-auth/react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs" // Новый импорт
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 
@@ -27,33 +27,61 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   } = useForm<FormData>({
     resolver: zodResolver(userAuthSchema),
   })
+  
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [isGitHubLoading, setIsGitHubLoading] = React.useState<boolean>(false)
   const searchParams = useSearchParams()
+  
+  // Инициализируем клиент Supabase
+  const supabase = createClientComponentClient()
 
+  // 1. Вход через Email (Magic Link)
   async function onSubmit(data: FormData) {
     setIsLoading(true)
 
-    const signInResult = await signIn("email", {
+    const { error } = await supabase.auth.signInWithOtp({
       email: data.email.toLowerCase(),
-      redirect: false,
-      callbackUrl: searchParams?.get("from") || "/dashboard",
+      options: {
+        // Ссылка, по которой юзер кликнет в письме
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     })
 
     setIsLoading(false)
 
-    if (!signInResult?.ok) {
+    if (error) {
       return toast({
-        title: "Something went wrong.",
-        description: "Your sign in request failed. Please try again.",
+        title: "Что-то пошло не так.",
+        description: "Не удалось отправить запрос. " + error.message,
         variant: "destructive",
       })
     }
 
     return toast({
-      title: "Check your email",
-      description: "We sent you a login link. Be sure to check your spam too.",
+      title: "Проверьте почту",
+      description: "Мы отправили вам ссылку для входа. Не забудьте проверить спам.",
     })
+  }
+
+  // 2. Вход через GitHub
+  async function loginWithGitHub() {
+    setIsGitHubLoading(true)
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+
+    if (error) {
+      setIsGitHubLoading(false)
+      return toast({
+        title: "Ошибка GitHub",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -84,7 +112,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             {isLoading && (
               <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Sign In with Email
+            Войти через Email
           </button>
         </div>
       </form>
@@ -94,17 +122,14 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">
-            Or continue with
+            Продолжить через
           </span>
         </div>
       </div>
       <button
         type="button"
         className={cn(buttonVariants({ variant: "outline" }))}
-        onClick={() => {
-          setIsGitHubLoading(true)
-          signIn("github")
-        }}
+        onClick={loginWithGitHub}
         disabled={isLoading || isGitHubLoading}
       >
         {isGitHubLoading ? (

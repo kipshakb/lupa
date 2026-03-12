@@ -1,13 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql" // Поменяли на postgresql
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Account {
@@ -51,9 +49,10 @@ model User {
   createdAt     DateTime  @default(now()) @map(name: "created_at")
   updatedAt     DateTime  @default(now()) @map(name: "updated_at")
 
-  accounts Account[]
-  sessions Session[]
+  accounts Session[]
+  Account  Account[]
   Post     Post[]
+  Events   Event[] // Связь юзера с его мероприятиями
 
   stripeCustomerId       String?   @unique @map(name: "stripe_customer_id")
   stripeSubscriptionId   String?   @unique @map(name: "stripe_subscription_id")
@@ -80,8 +79,31 @@ model Post {
   createdAt DateTime @default(now()) @map(name: "created_at")
   updatedAt DateTime @default(now()) @map(name: "updated_at")
   authorId  String
-
-  author User @relation(fields: [authorId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
 
   @@map(name: "posts")
+}
+
+// НАША НОВАЯ ТАБЛИЦА ДЛЯ МЕРОПРИЯТИЙ
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageUrl String?
+  
+  lat         Float
+  lng         Float
+  
+  format      String   
+  price       Int      @default(0)
+  date        DateTime
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([authorId])
+  @@map(name: "events")
 }
