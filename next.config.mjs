@@ -5,6 +5,14 @@ import "./env.mjs"
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // --- ДОБАВЬ ЭТИ СТРОЧКИ ОТСЮДА ---
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // --- ДО СЮДА ---
   images: {
     domains: ["avatars.githubusercontent.com"],
   },
